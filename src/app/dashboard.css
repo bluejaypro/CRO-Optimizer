@@ -1,0 +1,439 @@
+/* ── Dashboard Layout ─────────────────────────────────────────────────────── */
+.dashboard-root {
+    display: flex;
+    min-height: 100vh;
+    background: #020617;
+    color: #f1f5f9;
+    font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+.sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    background: #0f172a;
+    border-right: 1px solid #1e293b;
+    display: flex;
+    flex-direction: column;
+    padding: 1.25rem;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.brand-icon {
+    width: 2rem;
+    height: 2rem;
+    background: #f59e0b;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.3);
+}
+
+.sidebar-text {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    line-height: 1.65;
+}
+
+.sidebar-section {
+    border-top: 1px solid rgba(51, 65, 85, 0.5);
+    padding-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.sidebar-section-title {
+    font-size: 0.65rem;
+    color: #475569;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    padding-top: 1.25rem;
+    border-top: 1px solid #1e293b;
+    font-size: 0.7rem;
+    color: #475569;
+    text-align: center;
+    line-height: 1.8;
+}
+
+/* ── Main Content ────────────────────────────────────────────────────────── */
+.main-content {
+    flex: 1;
+    padding: 1.75rem 2rem;
+    overflow-y: auto;
+    max-width: none;
+}
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+.card {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+}
+
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+/* ── Score Cards ─────────────────────────────────────────────────────────── */
+.score-card {
+    border-radius: 0.75rem;
+    padding: 1rem;
+    border: 1px solid;
+}
+
+.score-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.score-card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.score-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid;
+}
+
+.score-body {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.gauge-wrap {
+    position: relative;
+    width: 4rem;
+    height: 4rem;
+    flex-shrink: 0;
+}
+
+.gauge-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.125rem;
+    font-weight: 700;
+}
+
+.rate-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+/* ── Form / Search ───────────────────────────────────────────────────────── */
+.domain-search-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.domain-input {
+    width: 100%;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 0.5rem;
+    padding: 0.625rem 1rem 0.625rem 2.25rem;
+    color: #fff;
+    font-size: 0.875rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.domain-input::placeholder {
+    color: #475569;
+}
+
+.domain-input:focus {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+/* ── Alphabet Filter ─────────────────────────────────────────────────────── */
+.alpha-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-bottom: 0.75rem;
+}
+
+.alpha-btn {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: none;
+    transition: all 0.1s;
+    font-family: inherit;
+}
+
+/* ── Domain List ─────────────────────────────────────────────────────────── */
+.domain-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    max-height: 11rem;
+    overflow-y: auto;
+}
+
+.domain-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.domain-row:hover {
+    filter: brightness(1.15);
+}
+
+/* ── Domain Banner ───────────────────────────────────────────────────────── */
+.domain-banner {
+    background: linear-gradient(to right, rgba(245, 158, 11, 0.18), #0f172a);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* ── Section Typography ──────────────────────────────────────────────────── */
+.section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.section-sub {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-bottom: 0.75rem;
+    line-height: 1.6;
+}
+
+/* ── Raw Data Box ────────────────────────────────────────────────────────── */
+.raw-data-box {
+    background: #1e293b;
+    border-radius: 0.5rem;
+    padding: 0.875rem 1rem;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    white-space: pre-wrap;
+    overflow-x: auto;
+    max-height: 14rem;
+    overflow-y: auto;
+    line-height: 1.7;
+}
+
+/* ── Page Rank Row ───────────────────────────────────────────────────────── */
+.rank-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid;
+}
+
+.rank-number {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.625rem 1.25rem;
+    background: #f59e0b;
+    color: #0f172a;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.btn-primary:hover {
+    background: #fbbf24;
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.625rem 0.875rem;
+    background: #1e293b;
+    color: #cbd5e1;
+    border: 1px solid #334155;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.btn-secondary:hover {
+    background: #334155;
+}
+
+.btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.625rem;
+    height: 1.75rem;
+    background: #334155;
+    color: #94a3b8;
+    border: none;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+}
+
+.btn-ghost:hover {
+    background: #475569;
+}
+
+.btn-success {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.625rem 1rem;
+    background: rgba(52, 211, 153, 0.12);
+    color: #34d399;
+    border: 1px solid rgba(52, 211, 153, 0.35);
+    border-radius: 0.5rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+}
+
+.btn-success:hover {
+    background: rgba(52, 211, 153, 0.22);
+}
+
+/* ── Error Box ───────────────────────────────────────────────────────────── */
+.error-box {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+/* ── Chart Tooltip ───────────────────────────────────────────────────────── */
+.chart-tooltip {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    font-size: 0.8rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.chart-tooltip-title {
+    font-weight: 600;
+    color: #e2e8f0;
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.tooltip-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.tooltip-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    flex-shrink: 0;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 3px;
+}
+
+/* ── Spinner ─────────────────────────────────────────────────────────────── */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+    .sidebar {
+        display: none;
+    }
+
+    .cards-grid {
+        grid-template-columns: 1fr;
+    }
+}
