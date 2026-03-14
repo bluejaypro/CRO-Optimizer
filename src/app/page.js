@@ -345,10 +345,10 @@ export default function Dashboard() {
     finally { setLoading(false); }
   };
 
-  const handleSelectDomain = useCallback((domain) => {
+  const handleSelectDomain = (domain) => {
     setSelectedDomain(domain);
     fetchDomainAnalytics(domain);
-  }, []);
+  };
 
   useEffect(() => { if (!initialLoadDone) fetchDomainList(); }, [initialLoadDone]);
 
