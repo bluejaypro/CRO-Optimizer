@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, ReferenceLine, Cell,
@@ -235,13 +235,13 @@ export default function Dashboard() {
     try {
       const stored = localStorage.getItem('clarityLiveToken');
       if (stored) setClarityToken(stored);
-    } catch (e) { }
+    } catch (e) { console.warn('localStorage read error:', e); }
   }, []);
 
   const saveToken = () => {
     try {
       localStorage.setItem('clarityLiveToken', clarityToken);
-    } catch (e) { }
+    } catch (e) { console.warn('localStorage write error:', e); }
     setShowSettings(false);
     setInitialLoadDone(false);
   };
@@ -272,7 +272,9 @@ export default function Dashboard() {
         throw new Error(err.error || `API error: ${res.status}`);
       }
       const data = await res.json();
-      return data.content.filter(i => i.type === 'text').map(i => i.text).join('\n');
+      const content = data?.content;
+      if (!Array.isArray(content)) throw new Error('Unexpected API response format');
+      return content.filter(i => i.type === 'text').map(i => i.text).join('\n');
     } catch (err) {
       if (retries > 0) { await new Promise(r => setTimeout(r, 1000)); return callClaude(query, rawData, retries - 1); }
       throw err;
@@ -298,7 +300,7 @@ export default function Dashboard() {
           domains = [...new Set(matches)].map(d => ({ domain: d, sessions: 0 }));
         }
       } else {
-        domains = [{ domain: 'drwattselectric.com', sessions: 2541 }];
+        domains = [{ domain: 'example.com', sessions: 0 }];
       }
       setDomainList(domains);
       setInitialLoadDone(true);
@@ -345,11 +347,12 @@ export default function Dashboard() {
     finally { setLoading(false); }
   };
 
-  const handleSelectDomain = useCallback((domain) => {
+  const handleSelectDomain = (domain) => {
     setSelectedDomain(domain);
     fetchDomainAnalytics(domain);
-  }, []);
+  };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (!initialLoadDone) fetchDomainList(); }, [initialLoadDone]);
 
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -498,8 +501,8 @@ export default function Dashboard() {
           </div>
 
           <div className="domain-list">
-            {filteredDomains.map((d, i) => (
-              <div key={i} onClick={() => handleSelectDomain(d.domain)} className="domain-row">
+            {filteredDomains.map((d) => (
+              <div key={d.domain} onClick={() => handleSelectDomain(d.domain)} className="domain-row">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Globe size={14} style={{ color: '#34d399' }} />
                   <span style={{ color: '#fff' }}>{d.domain}</span>

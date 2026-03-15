@@ -427,6 +427,10 @@
     }
 }
 
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
     .sidebar {

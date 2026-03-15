@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# ClarityPro — Organic CRO Analytics Dashboard
 
-## Getting Started
+Track organic visitor conversion rates using Microsoft Clarity data, analyzed by Claude AI.
 
-First, run the development server:
+## Tech Stack
+
+- **Next.js 16** (App Router, Edge Runtime)
+- **Tailwind CSS v4**
+- **Recharts** for data visualization
+- **lucide-react** for icons
+- **Anthropic Claude API** for AI-powered analytics
+
+## Prerequisites
+
+- Node.js 18+
+- An [Anthropic API key](https://console.anthropic.com/)
+- (Optional) A Microsoft Clarity project with a JWT export token
+
+## Setup
 
 ```bash
+git clone https://github.com/bluejaypro/CRO-Optimizer.git
+cd CRO-Optimizer
+npm install
+cp .env.example .env.local
+# Edit .env.local and add your ANTHROPIC_API_KEY
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Connecting Microsoft Clarity
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Click the **Settings** gear icon in the sidebar
+2. Paste your Clarity Live Insights JWT token
+3. Click **Save & Reload** — the dashboard will fetch real analytics data
 
-## Learn More
+Without a Clarity token, the dashboard displays demo data.
 
-To learn more about Next.js, take a look at the following resources:
+## Architecture
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+  app/
+    page.js              # Main dashboard (client component)
+    layout.js            # Root layout
+    globals.css          # Tailwind + custom styles
+    dashboard.css        # Dashboard-specific styles
+    api/
+      anthropic/v1/
+        messages/
+          route.js       # Claude API proxy (Edge Runtime)
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **`/`** — Single-page dashboard with domain list, CRO metrics, charts, and AI analysis
+- **`/api/anthropic/v1/messages`** — Server-side proxy to the Anthropic API (keeps your API key secret)
 
-## Deploy on Vercel
+## Scripts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Production build |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
