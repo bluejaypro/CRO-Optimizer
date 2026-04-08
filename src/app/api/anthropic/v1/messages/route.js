@@ -1,20 +1,39 @@
-import { NextResponse } from 'next/server';
+const ANTHROPIC_API_KEY = typeof process !== 'undefined' ? process.env.ANTHROPIC_API_KEY : undefined;
 
 export const runtime = 'edge';
+
+// Conditional import to handle non-Next environments
+let NextResponse;
+try {
+    const nextServer = await import('next/server');
+    NextResponse = nextServer.NextResponse;
+} catch (e) {
+    // Fallback for tests
+    NextResponse = {
+        json: (data, options = {}) => {
+            const status = options.status || 200;
+            return {
+                status,
+                json: async () => data,
+                ok: status >= 200 && status < 300
+            };
+        }
+    };
+}
 
 export async function POST(req) {
     try {
         const body = await req.json();
         const { messages, model, max_tokens, system, tools, tool_choice } = body;
 
-        const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+        const apiKey = process.env.ANTHROPIC_API_KEY;
 
-        if (!ANTHROPIC_API_KEY) {
+        if (!apiKey) {
             console.error("[Claude Proxy] Missing API keys");
             return NextResponse.json({ error: "API keys not configured" }, { status: 500 });
         }
 
-        const cleanAnthropicKey = ANTHROPIC_API_KEY.replace(/["']/g, '').trim();
+        const cleanAnthropicKey = apiKey.replace(/["']/g, '').trim();
 
         console.log("[Claude Proxy] Calling Anthropic...");
         const payload = {
