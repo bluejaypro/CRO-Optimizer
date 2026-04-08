@@ -235,13 +235,13 @@ export default function Dashboard() {
     try {
       const stored = localStorage.getItem('clarityLiveToken');
       if (stored) setClarityToken(stored);
-    } catch (e) { }
+    } catch (e) { console.error('localStorage error:', e); }
   }, []);
 
   const saveToken = () => {
     try {
       localStorage.setItem('clarityLiveToken', clarityToken);
-    } catch (e) { }
+    } catch (e) { console.error('localStorage error:', e); }
     setShowSettings(false);
     setInitialLoadDone(false);
   };
@@ -293,7 +293,7 @@ export default function Dashboard() {
         try {
           const m = claudeRes.match(/\[[\s\S]*\]/);
           if (m) domains = JSON.parse(m[0]);
-        } catch {
+        } catch (err) { console.error('Failed to parse Claude response:', err);
           const matches = claudeRes.match(/([a-zA-Z0-9-]+\.[a-zA-Z]{2,})/g) || [];
           domains = [...new Set(matches)].map(d => ({ domain: d, sessions: 0 }));
         }
