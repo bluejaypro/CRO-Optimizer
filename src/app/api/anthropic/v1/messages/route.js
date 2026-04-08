@@ -4,6 +4,14 @@ export const runtime = 'edge';
 
 export async function POST(req) {
     try {
+        const PROXY_AUTH_TOKEN = process.env.PROXY_AUTH_TOKEN;
+        if (PROXY_AUTH_TOKEN) {
+            const authHeader = req.headers.get("Authorization");
+            if (authHeader !== `Bearer ${PROXY_AUTH_TOKEN}`) {
+                return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            }
+        }
+
         const body = await req.json();
         const { messages, model, max_tokens, system, tools, tool_choice } = body;
 
