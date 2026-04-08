@@ -41,6 +41,7 @@ const parseCROMetrics = (metricsText = '', entryText = '', gbpText = '') => {
     || extractMetric(gbpText, /sessions[:\s]+([0-9,]+)/i);
   const gbpConversions = extractMetric(gbpText, /gbp conversions[:\s]+([0-9,]+)/i)
     || extractMetric(gbpText, /conversions[:\s]+([0-9,]+)/i);
+
   const pageTypes = {
     homepage: {
       visitors: extractMetric(entryText, /homepage[^\d]*([0-9,]+)\s*sessions/i),
@@ -56,6 +57,14 @@ const parseCROMetrics = (metricsText = '', entryText = '', gbpText = '') => {
       conversions: extractMetric(entryText, /service[^\d]*convers[^\d]+([0-9,]+)/i),
     },
   };
+
+  Object.keys(pageTypes).forEach(k => {
+    const pt = pageTypes[k];
+    if (pt.visitors && pt.conversions)
+      pt.rate = parseFloat(((pt.conversions / pt.visitors) * 100).toFixed(1));
+    else pt.rate = 0;
+  });
+
   const hasRealData = Object.values(pageTypes).some(v => v.visitors);
   return { pageTypes, hasRealData };
 };
@@ -102,6 +111,48 @@ const buildRankedPages = (pt) =>
     rate: val.rate || 0,
     score: calcCROScore(val.rate || 0, key),
   })).sort((a, b) => b.score - a.score);
+
+// --- API Helpers ---
+const fetchClarityLiveInsights = async (token) => {
+  if (!token) throw new Error("Microsoft Clarity Token is missing.");
+  const res = await fetch('/clarity-proxy/export-data/api/v1/project-live-insights', {
+    method: 'GET',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error(`Clarity API error: ${res.status}`);
+  return await res.json();
+};
+
+const callClaude = async (query, rawData, retries = 2) => {
+  try {
+    const res = await fetch('/api/anthropic/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: `Analyze the following Clarity raw data. Query: ${query}\nData: ${JSON.stringify(rawData)}` }],
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || `API error: ${res.status}`);
+    }
+    const data = await res.json();
+    return data.content.filter(i => i.type === 'text').map(i => i.text).join('\n');
+  } catch (err) {
+    if (retries > 0) { await new Promise(r => setTimeout(r, 1000)); return callClaude(query, rawData, retries - 1); }
+    throw err;
+  }
+};
+
+const analyzeDomainWithAI = async (domain, rawData) => {
+  const [metricsResult, gbpResult, entryResult, croResult] = await Promise.all([
+    callClaude(`For ${domain} last 30 days: Find total organic sessions, unique users, bounce rate, page views. Dead clicks, rage clicks by device. CTA button clicks and form submissions (ContactUs, SubmitForm). Return structured data with numbers.`, rawData),
+    callClaude(`For ${domain}: Find Sessions from utm_source=GBP or source containing 'GBP'. Return text containing exactly 'gbp sessions: X' and 'gbp conversions: Y'.`, rawData),
+    callClaude(`For ${domain}: Categorize entry pages. Return explicitly 'homepage sessions: X', 'homepage conversions: Y', 'calculator sessions: X', 'calculator conversions: Y', 'service sessions: X', 'service conversions: Y'`, rawData),
+    callClaude(`For ${domain}: Pages with highest dead click counts. Pages with CLS scores above 0.1 and their form interaction rates.`, rawData),
+  ]);
+  return { metricsResult, gbpResult, entryResult, croResult };
+};
 
 // --- Components ---
 const PageIcons = { homepage: Home, gmb: MapPin, calculator: Calculator, service: Wrench };
@@ -246,45 +297,12 @@ export default function Dashboard() {
     setInitialLoadDone(false);
   };
 
-  const fetchClarityLiveInsights = async () => {
-    if (!clarityToken) throw new Error("Microsoft Clarity Token is missing.");
-    const res = await fetch('/clarity-proxy/export-data/api/v1/project-live-insights', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${clarityToken}`
-      }
-    });
-    if (!res.ok) throw new Error(`Clarity API error: ${res.status}`);
-    return await res.json();
-  };
-
-  const callClaude = async (query, rawData, retries = 2) => {
-    try {
-      const res = await fetch('/api/anthropic/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: `Analyze the following Clarity raw data. Query: ${query}\nData: ${JSON.stringify(rawData)}` }],
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || `API error: ${res.status}`);
-      }
-      const data = await res.json();
-      return data.content.filter(i => i.type === 'text').map(i => i.text).join('\n');
-    } catch (err) {
-      if (retries > 0) { await new Promise(r => setTimeout(r, 1000)); return callClaude(query, rawData, retries - 1); }
-      throw err;
-    }
-  };
-
   const fetchDomainList = async () => {
     setLoading(true); setError(null);
     try {
       let domains = [];
       if (clarityToken) {
-        const rawData = await fetchClarityLiveInsights();
+        const rawData = await fetchClarityLiveInsights(clarityToken);
         setRawDashboardData(rawData);
         const claudeRes = await callClaude(
           `List all unique domains with session counts from this data. Return exactly as JSON array of objects: [{ "domain": "example.com", "sessions": 123 }]. Do not format with markdown blocks, just return raw JSON string.`,
@@ -313,28 +331,26 @@ export default function Dashboard() {
       if (clarityToken) {
         let rawData = rawDashboardData;
         if (!rawData) {
-          rawData = await fetchClarityLiveInsights();
+          rawData = await fetchClarityLiveInsights(clarityToken);
           setRawDashboardData(rawData);
         }
 
-        const [metricsResult, gbpResult, entryResult, croResult] = await Promise.all([
-          callClaude(`For ${domain} last 30 days: Find total organic sessions, unique users, bounce rate, page views. Dead clicks, rage clicks by device. CTA button clicks and form submissions (ContactUs, SubmitForm). Return structured data with numbers.`, rawData),
-          callClaude(`For ${domain}: Find Sessions from utm_source=GBP or source containing 'GBP'. Return text containing exactly 'gbp sessions: X' and 'gbp conversions: Y'.`, rawData),
-          callClaude(`For ${domain}: Categorize entry pages. Return explicitly 'homepage sessions: X', 'homepage conversions: Y', 'calculator sessions: X', 'calculator conversions: Y', 'service sessions: X', 'service conversions: Y'`, rawData),
-          callClaude(`For ${domain}: Pages with highest dead click counts. Pages with CLS scores above 0.1 and their form interaction rates.`, rawData),
-        ]);
+        const { metricsResult, gbpResult, entryResult, croResult } = await analyzeDomainWithAI(domain, rawData);
 
-        setAnalyticsData({ raw: { metrics: { textResponses: metricsResult }, entry: { toolResults: entryResult }, cro: { toolResults: croResult } }, domain, timestamp: new Date().toISOString() });
+        setAnalyticsData({
+          raw: {
+            metrics: { textResponses: metricsResult },
+            entry: { toolResults: entryResult },
+            cro: { toolResults: croResult }
+          },
+          domain,
+          timestamp: new Date().toISOString()
+        });
         setGbpData({ raw: { textResponses: gbpResult }, domain });
 
         const parsed = parseCROMetrics(metricsResult, entryResult, gbpResult);
         if (parsed.hasRealData) {
-          const pt = parsed.pageTypes;
-          Object.keys(pt).forEach(k => {
-            if (pt[k].visitors && pt[k].conversions)
-              pt[k].rate = parseFloat(((pt[k].conversions / pt[k].visitors) * 100).toFixed(1));
-          });
-          setCroMetrics({ pageTypes: pt, isDemo: false });
+          setCroMetrics({ pageTypes: parsed.pageTypes, isDemo: false });
         } else {
           setCroMetrics(generateDemoData(domain));
         }
@@ -348,7 +364,7 @@ export default function Dashboard() {
   const handleSelectDomain = useCallback((domain) => {
     setSelectedDomain(domain);
     fetchDomainAnalytics(domain);
-  }, []);
+  }, [clarityToken, rawDashboardData]);
 
   useEffect(() => { if (!initialLoadDone) fetchDomainList(); }, [initialLoadDone]);
 
