@@ -54,196 +54,133 @@ const parseCROMetrics = (metricsText = '', entryText = '', gbpText = '') => {
     service: {
       visitors: extractMetric(entryText, /service[^\d]*([0-9,]+)\s*sessions/i),
       conversions: extractMetric(entryText, /service[^\d]*convers[^\d]+([0-9,]+)/i),
-    },
+    }
   };
-  const hasRealData = Object.values(pageTypes).some(v => v.visitors);
+
+  const hasRealData = Object.values(pageTypes).some(p => p.visitors !== null);
   return { pageTypes, hasRealData };
 };
 
-const generateDemoData = (domain = '') => {
-  const seed = domain.split('').reduce((a, c) => a + c.charCodeAt(0), 42);
-  const r = (min, max, offset = 0) =>
-    min + ((((seed + offset) * 9301 + 49297) % 233280) / 233280) * (max - min);
-  const make = (min, max, cMin, cMax, offset) => {
-    const v = Math.round(r(min, max, offset));
-    const c = Math.round(r(cMin, cMax, offset + 1));
-    return { visitors: v, conversions: c, rate: parseFloat(((c / v) * 100).toFixed(1)) };
-  };
+const generateDemoData = (domain) => {
+  const seed = domain.length;
   return {
-    pageTypes: {
-      homepage: make(320, 620, 5, 14, 1),
-      gmb: make(80, 200, 5, 16, 2),
-      calculator: make(50, 130, 3, 10, 3),
-      service: make(160, 360, 5, 18, 4),
-    },
     isDemo: true,
+    pageTypes: {
+      homepage: { visitors: 1200 + seed, conversions: 25 + seed, rate: 2.1 },
+      gmb: { visitors: 450 + seed, conversions: 32 + seed, rate: 7.1 },
+      calculator: { visitors: 300 + seed, conversions: 18 + seed, rate: 6.0 },
+      service: { visitors: 800 + seed, conversions: 35 + seed, rate: 4.4 },
+    }
   };
 };
-
-const buildTrendData = (pt) =>
-  ['Week 1', 'Week 2', 'Week 3', 'Week 4'].map((week, i) => {
-    const f = [0.72, 0.82, 0.91, 1.0][i];
-    return {
-      week,
-      homepage: Math.round(calcCROScore((pt.homepage?.rate || 0) * f, 'homepage')),
-      gmb: Math.round(calcCROScore((pt.gmb?.rate || 0) * f, 'gmb')),
-      calculator: Math.round(calcCROScore((pt.calculator?.rate || 0) * f, 'calculator')),
-      service: Math.round(calcCROScore((pt.service?.rate || 0) * f, 'service')),
-    };
-  });
-
-const buildRankedPages = (pt) =>
-  Object.entries(pt).map(([key, val]) => ({
-    key,
-    label: CRO_BENCHMARKS[key]?.label,
-    color: CRO_BENCHMARKS[key]?.color,
-    visitors: val.visitors || 0,
-    conversions: val.conversions || 0,
-    rate: val.rate || 0,
-    score: calcCROScore(val.rate || 0, key),
-  })).sort((a, b) => b.score - a.score);
 
 // --- Components ---
-const PageIcons = { homepage: Home, gmb: MapPin, calculator: Calculator, service: Wrench };
-
 const CROScoreCard = ({ benchmarkKey, data }) => {
   const bm = CRO_BENCHMARKS[benchmarkKey];
-  const rate = data?.rate || 0;
-  const s = calcCROScore(rate, benchmarkKey);
-  const Icon = PageIcons[benchmarkKey] || Globe;
+  const score = calcCROScore(data?.rate, benchmarkKey);
 
   return (
-    <div className="score-card" style={{
-      borderColor: scoreColor(s) + '40',
-      backgroundColor: scoreColor(s) + '08',
-    }}>
-      <div className="score-card-header">
-        <div className="score-card-title">
-          <Icon size={15} style={{ color: bm.color }} />
-          <span className="text-sm font-medium" style={{ color: '#cbd5e1' }}>{bm.label}</span>
+    <div className="card score-card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+        <div>
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{bm.label}</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#fff', marginTop: '0.25rem' }}>{data?.rate || 0}% <span style={{ fontSize: '0.875rem', fontWeight: 400, color: '#475569' }}>CVR</span></div>
         </div>
-        <span className="score-badge" style={{
-          color: scoreColor(s),
-          borderColor: scoreColor(s) + '50',
-          backgroundColor: scoreColor(s) + '15',
-        }}>
-          {scoreLabel(s)}
-        </span>
-      </div>
-      <div className="score-body">
-        <div className="gauge-wrap">
-          <svg viewBox="0 0 36 36" style={{ width: '4rem', height: '4rem', transform: 'rotate(-90deg)' }}>
-            <circle cx="18" cy="18" r="15.9" fill="none" stroke="#1e293b" strokeWidth="3" />
-            <circle cx="18" cy="18" r="15.9" fill="none"
-              stroke={scoreColor(s)} strokeWidth="3"
-              strokeDasharray={`${s} 100`} strokeLinecap="round"
-            />
-          </svg>
-          <div className="gauge-label" style={{ color: scoreColor(s) }}>{s}</div>
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="rate-value">{rate.toFixed(1)}%</div>
-          <div style={{ color: '#94a3b8', fontSize: '0.75rem' }}>Conversion Rate</div>
-          <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.125rem' }}>
-            Min {bm.min}% · Good {bm.good}%
-          </div>
+        <div style={{ padding: '0.35rem 0.65rem', borderRadius: '2rem', fontSize: '0.7rem', fontWeight: 700, background: scoreColor(score) + '20', color: scoreColor(score), border: `1px solid ${scoreColor(score)}40` }}>
+          {scoreLabel(score)}
         </div>
       </div>
-    </div>
-  );
-};
 
-const LineTooltip = ({ active, payload, label }) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="chart-tooltip">
-      <p className="chart-tooltip-title">{label}</p>
-      {payload.map(p => (
-        <div key={p.dataKey} className="tooltip-row">
-          <div className="tooltip-dot" style={{ background: p.color }} />
-          <span style={{ color: '#94a3b8' }}>{CRO_BENCHMARKS[p.dataKey]?.label || p.dataKey}:</span>
-          <span className="font-medium" style={{ color: '#fff' }}>{p.value}</span>
-        </div>
-      ))}
-    </div>
-  );
-};
+      <div style={{ height: '6px', background: '#1e293b', borderRadius: '10px', overflow: 'hidden', marginBottom: '1rem' }}>
+        <div style={{ height: '100%', width: `${score}%`, background: scoreColor(score), borderRadius: '10px', transition: 'width 1s ease-out' }} />
+      </div>
 
-const BarTooltip = ({ active, payload, label }) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="chart-tooltip">
-      <p className="chart-tooltip-title">{label}</p>
-      {payload.map(p => (
-        <div key={p.dataKey} className="tooltip-row">
-          <div className="tooltip-dot" style={{ background: p.fill }} />
-          <span style={{ color: '#94a3b8' }}>{p.name}:</span>
-          <span className="font-medium" style={{ color: '#fff' }}>{p.value.toLocaleString()}</span>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className="mini-stat">
+          <Users size={12} /> <span>{data?.visitors?.toLocaleString() || 0} Sessions</span>
         </div>
-      ))}
+        <div className="mini-stat">
+          <Target size={12} /> <span>{data?.conversions?.toLocaleString() || 0} Leads</span>
+        </div>
+      </div>
     </div>
   );
 };
 
 const PageRankRow = ({ page, rank, isWinner }) => (
-  <div className="rank-row" style={{
-    borderColor: isWinner ? 'rgba(52,211,153,0.25)' : 'rgba(239,68,68,0.25)',
-    backgroundColor: isWinner ? 'rgba(52,211,153,0.05)' : 'rgba(239,68,68,0.05)',
-  }}>
-    <div className="rank-number" style={{
-      color: isWinner ? '#34d399' : '#f87171',
-      backgroundColor: isWinner ? 'rgba(52,211,153,0.15)' : 'rgba(239,68,68,0.15)',
-    }}>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 0', borderBottom: '1px solid #1e293b' }}>
+    <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: isWinner ? '#065f46' : '#7f1d1d', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, color: isWinner ? '#34d399' : '#f87171' }}>
       {rank}
     </div>
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.125rem' }}>
-        <div style={{ width: '0.5rem', height: '0.5rem', borderRadius: '9999px', background: page.color, flexShrink: 0 }} />
-        <span style={{ color: '#fff', fontSize: '0.875rem', fontWeight: 500 }}>{page.label}</span>
-      </div>
-      <div style={{ color: '#64748b', fontSize: '0.75rem' }}>
-        {page.visitors.toLocaleString()} visitors · {page.conversions} leads · {page.rate.toFixed(1)}% rate
-      </div>
+    <div style={{ flex: 1 }}>
+      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#fff' }}>{CRO_BENCHMARKS[page.key].label}</div>
+      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Score: {page.score}/100</div>
     </div>
-    <div style={{ color: scoreColor(page.score), fontSize: '1.125rem', fontWeight: 700, flexShrink: 0 }}>
-      {page.score}
-    </div>
-    <div style={{ color: isWinner ? '#34d399' : '#f87171', flexShrink: 0 }}>
-      {isWinner ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
+    <div style={{ textAlign: 'right' }}>
+      {isWinner ? <TrendingUp size={16} color="#10b981" /> : <TrendingDown size={16} color="#ef4444" />}
     </div>
   </div>
 );
 
-// --- Main Page ---
+const LineTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div style={{ background: '#0f172a', border: '1px solid #1e293b', padding: '0.75rem', borderRadius: '0.5rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }}>
+        <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: '0.5rem', fontWeight: 600 }}>{label}</p>
+        {payload.map((entry, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: entry.color, fontSize: '0.8125rem', fontWeight: 500 }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: entry.color }} />
+            <span>{entry.name}: {entry.value}%</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+const BarTooltip = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div style={{ background: '#0f172a', border: '1px solid #1e293b', padding: '0.75rem', borderRadius: '0.5rem' }}>
+        <p style={{ color: '#fff', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>{data.type}</p>
+        <p style={{ color: '#94a3b8', fontSize: '0.75rem' }}>Visitors: {data['Organic Visitors'].toLocaleString()}</p>
+        <p style={{ color: '#f59e0b', fontSize: '0.75rem', fontWeight: 600 }}>Conversions: {data.Conversions.toLocaleString()}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function Dashboard() {
-  const [searchDomain, setSearchDomain] = useState('');
-  const [selectedDomain, setSelectedDomain] = useState(null);
-  const [sortOrder, setSortOrder] = useState('asc');
-  const [activeLetterFilter, setActiveLetterFilter] = useState(null);
+  const [clarityToken, setClarityToken] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
+  const [domainList, setDomainList] = useState([]);
+  const [selectedDomain, setSelectedDomain] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
   const [gbpData, setGbpData] = useState(null);
-  const [domainList, setDomainList] = useState([]);
-  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [croMetrics, setCroMetrics] = useState(null);
-  const [clarityToken, setClarityToken] = useState('');
-  const [showSettings, setShowSettings] = useState(false);
   const [rawDashboardData, setRawDashboardData] = useState(null);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const [searchDomain, setSearchDomain] = useState('');
+  const [activeLetterFilter, setActiveLetterFilter] = useState(null);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('clarityLiveToken');
-      if (stored) setClarityToken(stored);
-    } catch (e) { }
+    const saved = localStorage.getItem('clarity_token');
+    if (saved) setClarityToken(saved);
   }, []);
 
+  useEffect(() => {
+    if (!initialLoadDone) fetchDomainList();
+  }, [initialLoadDone]);
+
   const saveToken = () => {
-    try {
-      localStorage.setItem('clarityLiveToken', clarityToken);
-    } catch (e) { }
+    localStorage.setItem('clarity_token', clarityToken);
     setShowSettings(false);
-    setInitialLoadDone(false);
+    fetchDomainList();
   };
 
   const fetchClarityLiveInsights = async () => {
@@ -259,12 +196,13 @@ export default function Dashboard() {
   };
 
   const callClaude = async (query, rawData, retries = 2) => {
+    const dataStr = typeof rawData === "string" ? rawData : JSON.stringify(rawData);
     try {
-      const res = await fetch('/api/anthropic/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/anthropic/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [{ role: 'user', content: `Analyze the following Clarity raw data. Query: ${query}\nData: ${JSON.stringify(rawData)}` }],
+          messages: [{ role: "user", content: `Analyze the following Clarity raw data. Query: ${query}\nData: ${dataStr}` }],
         }),
       });
       if (!res.ok) {
@@ -274,7 +212,7 @@ export default function Dashboard() {
       const data = await res.json();
       return data.content.filter(i => i.type === 'text').map(i => i.text).join('\n');
     } catch (err) {
-      if (retries > 0) { await new Promise(r => setTimeout(r, 1000)); return callClaude(query, rawData, retries - 1); }
+      if (retries > 0) { await new Promise(r => setTimeout(r, 1000)); return callClaude(query, dataStr, retries - 1); }
       throw err;
     }
   };
@@ -317,11 +255,12 @@ export default function Dashboard() {
           setRawDashboardData(rawData);
         }
 
+        const serializedData = JSON.stringify(rawData);
         const [metricsResult, gbpResult, entryResult, croResult] = await Promise.all([
-          callClaude(`For ${domain} last 30 days: Find total organic sessions, unique users, bounce rate, page views. Dead clicks, rage clicks by device. CTA button clicks and form submissions (ContactUs, SubmitForm). Return structured data with numbers.`, rawData),
-          callClaude(`For ${domain}: Find Sessions from utm_source=GBP or source containing 'GBP'. Return text containing exactly 'gbp sessions: X' and 'gbp conversions: Y'.`, rawData),
-          callClaude(`For ${domain}: Categorize entry pages. Return explicitly 'homepage sessions: X', 'homepage conversions: Y', 'calculator sessions: X', 'calculator conversions: Y', 'service sessions: X', 'service conversions: Y'`, rawData),
-          callClaude(`For ${domain}: Pages with highest dead click counts. Pages with CLS scores above 0.1 and their form interaction rates.`, rawData),
+          callClaude(`For ${domain} last 30 days: Find total organic sessions, unique users, bounce rate, page views. Dead clicks, rage clicks by device. CTA button clicks and form submissions (ContactUs, SubmitForm).`, serializedData),
+          callClaude(`For ${domain}: Find Sessions from utm_source=GBP or source containing "GBP". Return text containing exactly "gbp sessions: X" and "gbp conversions: Y".`, serializedData),
+          callClaude(`For ${domain}: Categorize entry pages. Return explicitly "homepage sessions: X", "homepage conversions: Y", "calculator sessions: X", "calculator conversions: Y", "service sessions: X", "service conversions: Y"`, serializedData),
+          callClaude(`For ${domain}: Pages with highest dead click counts. Pages with CLS scores above 0.1 and their form interaction rates.`, serializedData),
         ]);
 
         setAnalyticsData({ raw: { metrics: { textResponses: metricsResult }, entry: { toolResults: entryResult }, cro: { toolResults: croResult } }, domain, timestamp: new Date().toISOString() });
@@ -350,44 +289,57 @@ export default function Dashboard() {
     fetchDomainAnalytics(domain);
   }, []);
 
-  useEffect(() => { if (!initialLoadDone) fetchDomainList(); }, [initialLoadDone]);
+  const filteredDomains = useMemo(() => {
+    return domainList
+      .filter(d => d.domain.toLowerCase().includes(searchDomain.toLowerCase()))
+      .filter(d => !activeLetterFilter || d.domain.toLowerCase().startsWith(activeLetterFilter.toLowerCase()))
+      .sort((a, b) => b.sessions - a.sessions);
+  }, [domainList, searchDomain, activeLetterFilter]);
+
+  const availableLetters = useMemo(() => {
+    return [...new Set(domainList.map(d => d.domain[0].toUpperCase()))].sort();
+  }, [domainList]);
 
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-  const availableLetters = [...new Set(domainList.map(d => d.domain?.[0]?.toUpperCase()).filter(Boolean))];
-  const filteredDomains = useMemo(() => {
-    let r = [...domainList];
-    if (searchDomain) r = r.filter(d => d.domain?.toLowerCase().includes(searchDomain.toLowerCase()));
-    if (activeLetterFilter) r = r.filter(d => d.domain?.[0]?.toUpperCase() === activeLetterFilter);
-    r.sort((a, b) => { const c = (a.domain || '').localeCompare(b.domain || ''); return sortOrder === 'asc' ? c : -c; });
-    return r;
-  }, [domainList, searchDomain, activeLetterFilter, sortOrder]);
 
-  const { trendData, barData, topPages, bottomPages } = useMemo(() => {
-    if (!croMetrics) return { trendData: [], barData: [], topPages: [], bottomPages: [] };
-    const pt = croMetrics.pageTypes;
-    const trend = buildTrendData(pt);
-    const bar = Object.entries(pt).map(([k, v]) => ({
-      type: CRO_BENCHMARKS[k]?.label || k,
-      'Organic Visitors': v.visitors || 0,
-      'Conversions': v.conversions || 0,
-      color: CRO_BENCHMARKS[k]?.color,
+  const trendData = useMemo(() => {
+    const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+    return weeks.map(w => ({
+      week: w,
+      homepage: Math.floor(Math.random() * 20) + 70,
+      gmb: Math.floor(Math.random() * 20) + 60,
+      calculator: Math.floor(Math.random() * 20) + 50,
+      service: Math.floor(Math.random() * 20) + 65,
     }));
-    const ranked = buildRankedPages(pt);
-    return { trendData: trend, barData: bar, topPages: ranked.slice(0, 3), bottomPages: [...ranked].reverse().slice(0, 3) };
+  }, []);
+
+  const barData = useMemo(() => {
+    if (!croMetrics) return [];
+    return Object.keys(CRO_BENCHMARKS).map(k => ({
+      type: CRO_BENCHMARKS[k].label,
+      'Organic Visitors': croMetrics.pageTypes[k].visitors || 0,
+      'Conversions': croMetrics.pageTypes[k].conversions || 0,
+      color: CRO_BENCHMARKS[k].color,
+    }));
   }, [croMetrics]);
 
-  const displayData = analyticsData ? {
-    domain: analyticsData.domain,
-    rawText: analyticsData.raw?.metrics?.textResponses || '',
-    rawToolData: analyticsData.raw?.metrics?.textResponses || '',
-    entryData: analyticsData.raw?.entry?.textResponses || '',
-    croData: analyticsData.raw?.cro?.textResponses || '',
-  } : null;
+  const rankedPages = useMemo(() => {
+    if (!croMetrics) return [];
+    return Object.keys(CRO_BENCHMARKS).map(k => ({
+      key: k,
+      score: calcCROScore(croMetrics.pageTypes[k].rate, k)
+    })).sort((a, b) => b.score - a.score);
+  }, [croMetrics]);
+
+  const topPages = rankedPages.slice(0, 2);
+  const bottomPages = rankedPages.slice(-2).reverse();
+
+  const displayData = analyticsData?.raw?.metrics?.textResponses || analyticsData?.raw?.entry?.toolResults || analyticsData?.raw?.cro?.toolResults;
 
   return (
-    <div className="dashboard-root">
+    <div className="dashboard-container">
       {showSettings && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: '#1e293b', padding: '2rem', borderRadius: '1rem', width: '400px', maxWidth: '90%' }}>
             <h3 style={{ color: '#fff', fontSize: '1.25rem', marginBottom: '1rem' }}>Settings</h3>
             <div style={{ marginBottom: '1.5rem' }}>
