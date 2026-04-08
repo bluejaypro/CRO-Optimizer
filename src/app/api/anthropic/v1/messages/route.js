@@ -2,10 +2,36 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
+const ALLOWED_MODELS = [
+    'claude-3-5-sonnet-20241022',
+    'claude-3-5-haiku-20241022',
+    'claude-3-opus-20240229',
+    'claude-3-sonnet-20240229',
+    'claude-3-haiku-20240307'
+];
+
 export async function POST(req) {
     try {
         const body = await req.json();
         const { messages, model, max_tokens, system, tools, tool_choice } = body;
+
+        // --- Input Validation ---
+        if (model && !ALLOWED_MODELS.includes(model)) {
+            return NextResponse.json({ error: { message: `Invalid model: ${model}. Allowed models: ${ALLOWED_MODELS.join(', ')}`, type: "invalid_request_error" } }, { status: 400 });
+        }
+
+        if (!Array.isArray(messages) || messages.length === 0) {
+            return NextResponse.json({ error: { message: "messages must be a non-empty array", type: "invalid_request_error" } }, { status: 400 });
+        }
+
+        if (max_tokens !== undefined && (!Number.isInteger(max_tokens) || max_tokens <= 0)) {
+            return NextResponse.json({ error: { message: "max_tokens must be a positive integer", type: "invalid_request_error" } }, { status: 400 });
+        }
+
+        if (system !== undefined && typeof system !== 'string' && !Array.isArray(system)) {
+            return NextResponse.json({ error: { message: "system must be a string or an array of content blocks", type: "invalid_request_error" } }, { status: 400 });
+        }
+        // --- End Input Validation ---
 
         const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
