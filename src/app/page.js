@@ -235,13 +235,17 @@ export default function Dashboard() {
     try {
       const stored = localStorage.getItem('clarityLiveToken');
       if (stored) setClarityToken(stored);
-    } catch (e) { }
+    } catch (e) {
+      console.error('Error accessing localStorage:', e);
+    }
   }, []);
 
   const saveToken = () => {
     try {
       localStorage.setItem('clarityLiveToken', clarityToken);
-    } catch (e) { }
+    } catch (e) {
+      console.error('Error saving to localStorage:', e);
+    }
     setShowSettings(false);
     setInitialLoadDone(false);
   };
