@@ -227,33 +227,67 @@ export default function Dashboard() {
   const [domainList, setDomainList] = useState([]);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [croMetrics, setCroMetrics] = useState(null);
-  const [clarityToken, setClarityToken] = useState('');
+  const [clarityTokenInput, setClarityTokenInput] = useState('');
+  const [hasToken, setHasToken] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [rawDashboardData, setRawDashboardData] = useState(null);
 
-  useEffect(() => {
+  const checkTokenStatus = useCallback(async () => {
     try {
-      const stored = localStorage.getItem('clarityLiveToken');
-      if (stored) setClarityToken(stored);
-    } catch (e) { }
+      const res = await fetch('/api/auth/token');
+      const data = await res.json();
+      setHasToken(data.hasToken);
+    } catch (e) {
+      console.error('Failed to check token status', e);
+    }
   }, []);
 
-  const saveToken = () => {
+  useEffect(() => {
+    checkTokenStatus();
+  }, [checkTokenStatus]);
+
+  const saveToken = async () => {
     try {
-      localStorage.setItem('clarityLiveToken', clarityToken);
-    } catch (e) { }
-    setShowSettings(false);
-    setInitialLoadDone(false);
+      const res = await fetch('/api/auth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: clarityTokenInput }),
+      });
+      if (res.ok) {
+        setHasToken(true);
+        setClarityTokenInput('');
+        setShowSettings(false);
+        setInitialLoadDone(false);
+      } else {
+        const err = await res.json();
+        setError(err.error || 'Failed to save token');
+      }
+    } catch (e) {
+      setError('Failed to connect to authentication server');
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/token', { method: 'DELETE' });
+      setHasToken(false);
+      setDomainList([]);
+      setInitialLoadDone(false);
+      setSelectedDomain(null);
+      setCroMetrics(null);
+    } catch (e) {
+      console.error('Logout failed', e);
+    }
   };
 
   const fetchClarityLiveInsights = async () => {
-    if (!clarityToken) throw new Error("Microsoft Clarity Token is missing.");
-    const res = await fetch('/clarity-proxy/export-data/api/v1/project-live-insights', {
+    const res = await fetch('/api/clarity-proxy/export-data/api/v1/project-live-insights', {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${clarityToken}`
-      }
     });
+    if (res.status === 401) {
+      setHasToken(false);
+      throw new Error("Clarity session expired or missing.");
+    }
     if (!res.ok) throw new Error(`Clarity API error: ${res.status}`);
     return await res.json();
   };
@@ -283,7 +317,7 @@ export default function Dashboard() {
     setLoading(true); setError(null);
     try {
       let domains = [];
-      if (clarityToken) {
+      if (hasToken) {
         const rawData = await fetchClarityLiveInsights();
         setRawDashboardData(rawData);
         const claudeRes = await callClaude(
@@ -310,7 +344,7 @@ export default function Dashboard() {
     setLoading(true); setError(null);
     setAnalyticsData(null); setGbpData(null); setCroMetrics(null);
     try {
-      if (clarityToken) {
+      if (hasToken) {
         let rawData = rawDashboardData;
         if (!rawData) {
           rawData = await fetchClarityLiveInsights();
@@ -394,12 +428,12 @@ export default function Dashboard() {
               <label style={{ color: '#cbd5e1', display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Microsoft Clarity Token</label>
               <input
                 type="password"
-                value={clarityToken}
-                onChange={e => setClarityToken(e.target.value)}
+                value={clarityTokenInput}
+                onChange={e => setClarityTokenInput(e.target.value)}
                 placeholder="eyJ..."
                 style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #334155', background: '#0f172a', color: '#fff' }}
               />
-              <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.5rem' }}>Paste your Clarity Project live-insights JWT token here.</p>
+              <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.5rem' }}>Paste your Clarity Project live-insights JWT token here. It will be stored securely in an HttpOnly cookie.</p>
             </div>
             <div style={{ display: 'flex', gap: '1rem', justifyItems: 'flex-end', justifyContent: 'flex-end' }}>
               <button onClick={() => setShowSettings(false)} className="btn-secondary">Cancel</button>
@@ -441,8 +475,8 @@ export default function Dashboard() {
         <div style={{ marginBottom: '2rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: clarityToken ? '#34d399' : '#fbbf24', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>
-                <Zap size={14} /> {clarityToken ? 'Clarity Live' : 'Mock Data Mode'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: hasToken ? '#34d399' : '#fbbf24', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                <Zap size={14} /> {hasToken ? 'Clarity Live' : 'Mock Data Mode'}
               </div>
               <h1 style={{ fontSize: '1.875rem', fontWeight: 800, color: '#fff', marginBottom: '0.25rem' }}>
                 Organic CRO Analytics
@@ -452,6 +486,11 @@ export default function Dashboard() {
               <button onClick={() => setShowSettings(true)} className="btn-secondary">
                 <Settings size={14} /> Settings
               </button>
+              {hasToken && (
+                <button onClick={logout} className="btn-secondary" style={{ color: '#f87171' }}>
+                  Logout
+                </button>
+              )}
               <button onClick={fetchDomainList} disabled={loading} className="btn-primary">
                 <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
                 Refresh Domains
