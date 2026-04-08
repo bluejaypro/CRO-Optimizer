@@ -1,13 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  async rewrites() {
-    return [
-      {
-        source: '/clarity-proxy/:path*',
-        destination: 'https://www.clarity.ms/:path*',
-      },
-    ]
-  },
+  // Rewrites removed as they bypassed secure token injection.
+  // Token injection is now handled via /api/clarity-proxy/[...path]
 };
 
 export default nextConfig;
