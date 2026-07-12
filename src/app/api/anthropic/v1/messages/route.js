@@ -46,6 +46,6 @@ export async function POST(req) {
         return NextResponse.json(data);
     } catch (error) {
         console.error('[Claude Proxy] Fatal Error:', error);
-        return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
