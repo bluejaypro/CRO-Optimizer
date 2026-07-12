@@ -16,7 +16,6 @@ export async function POST(req) {
 
         const cleanAnthropicKey = ANTHROPIC_API_KEY.replace(/["']/g, '').trim();
 
-        console.log("[Claude Proxy] Calling Anthropic...");
         const payload = {
             model: model || 'claude-3-5-sonnet-20241022',
             max_tokens: max_tokens || 4096,
